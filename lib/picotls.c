@@ -4872,6 +4872,16 @@ Exit:
     return ctx;
 }
 
+void ptls_cipher_init_and_decrypt(ptls_cipher_context_t *ctx, const void *iv, void *output, const void *input, size_t len, uint8_t *first_byte_at, uint8_t *dst_payload_from)
+{
+    ctx->do_decrypt(ctx, iv, output, input, len, first_byte_at, dst_payload_from);
+}
+
+void ptls_cipher_init_and_encrypt(ptls_cipher_context_t *ctx, const void *iv, void *output, const void *input, size_t len, uint8_t *first_byte_at, uint8_t *dst_payload_from)
+{
+    ctx->do_encrypt(ctx, iv, output, input, len, first_byte_at, dst_payload_from);
+}
+
 ptls_aead_context_t *ptls_aead_new(ptls_aead_algorithm_t *aead, ptls_hash_algorithm_t *hash, int is_enc, const void *secret,
                                    const char *label_prefix)
 {
@@ -4889,6 +4899,13 @@ size_t ptls_aead_encrypt(ptls_aead_context_t *ctx, void *output, const void *inp
                          size_t aadlen)
 {
     size_t off = 0;
+
+    if(ctx->do_encrypt)
+    {
+        uint8_t iv[PTLS_MAX_IV_SIZE];
+        ptls_aead__build_iv(ctx, iv, seq);
+        return ctx->do_encrypt(ctx, output, input, inlen, seq, iv, aad, aadlen);
+    }
 
     ptls_aead_encrypt_init(ctx, seq, aad, aadlen);
     off += ptls_aead_encrypt_update(ctx, ((uint8_t *)output) + off, input, inlen);
