@@ -598,12 +598,12 @@ static size_t aead_encrypt(struct st_ptls_traffic_protection_t *ctx, void *outpu
     return off;
 }
 
-static int aead_decrypt(struct st_ptls_traffic_protection_t *ctx, void *output, size_t *outlen, const void *input, size_t inlen)
+static int aead_decrypt(struct st_ptls_traffic_protection_t *ctx, void *output, size_t *outlen, const void *input, size_t inlen, int batch)
 {
     uint8_t aad[5];
 
     build_aad(aad, inlen);
-    if ((*outlen = ptls_aead_decrypt(ctx->aead, output, input, inlen, ctx->seq, aad, sizeof(aad))) == SIZE_MAX)
+    if ((*outlen = ptls_aead_decrypt(ctx->aead, output, input, inlen, ctx->seq, aad, sizeof(aad), batch)) == SIZE_MAX)
         return PTLS_ALERT_BAD_RECORD_MAC;
     ++ctx->seq;
     return 0;
@@ -2922,7 +2922,7 @@ static int client_hello_decrypt_esni(ptls_context_t *ctx, ptls_iovec_t *server_n
     if ((ret = create_esni_aead(&aead, 0, ch->esni.cipher, (*secret)->secret, (*secret)->esni_contents_hash)) != 0)
         goto Exit;
     if (ptls_aead_decrypt(aead, decrypted, ch->esni.encrypted_sni.base, ch->esni.encrypted_sni.len, 0, ch->key_shares.base,
-                          ch->key_shares.len) != (*esni)->padded_length + PTLS_ESNI_NONCE_SIZE) {
+                          ch->key_shares.len, 0) != (*esni)->padded_length + PTLS_ESNI_NONCE_SIZE) {
         ret = PTLS_ALERT_DECRYPT_ERROR;
         goto Exit;
     }
@@ -4392,7 +4392,7 @@ static int handle_input(ptls_t *tls, ptls_message_emitter_t *emitter, ptls_buffe
         if ((ret = ptls_buffer_reserve(decryptbuf, 5 + rec.length)) != 0)
             return ret;
         if ((ret = aead_decrypt(&tls->traffic_protection.dec, decryptbuf->base + decryptbuf->off, &decrypted_length, rec.fragment,
-                                rec.length)) != 0) {
+                                rec.length, 0)) != 0) {
             if (tls->is_server && tls->server.early_data_skipped_bytes != UINT32_MAX)
                 goto ServerSkipEarlyData;
             return ret;

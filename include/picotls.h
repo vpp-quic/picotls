@@ -278,7 +278,7 @@ typedef struct st_ptls_aead_context_t {
     size_t (*do_encrypt_update)(struct st_ptls_aead_context_t *ctx, void *output, const void *input, size_t inlen);
     size_t (*do_encrypt_final)(struct st_ptls_aead_context_t *ctx, void *output);
     size_t (*do_decrypt)(struct st_ptls_aead_context_t *ctx, void *output, const void *input, size_t inlen, uint64_t seq,
-                         const void *iv, const void *aad, size_t aadlen);
+                         const void *iv, const void *aad, size_t aadlen, int batch);
     size_t (*do_encrypt)(struct st_ptls_aead_context_t *ctx, void *output, const void *input, size_t inlen, uint64_t seq,
                          const void *iv, const void *aad, size_t aadlen);
 } ptls_aead_context_t;
@@ -1090,7 +1090,7 @@ static size_t ptls_aead_encrypt_final(ptls_aead_context_t *ctx, void *output);
  * @return number of bytes emitted to output if successful, or SIZE_MAX if the input is invalid (e.g. broken MAC)
  */
 static size_t ptls_aead_decrypt(ptls_aead_context_t *ctx, void *output, const void *input, size_t inlen, uint64_t seq,
-                                const void *aad, size_t aadlen);
+                                const void *aad, size_t aadlen, int batch);
 /**
  * Return the current read epoch.
  */
@@ -1218,12 +1218,12 @@ inline size_t ptls_aead_encrypt_final(ptls_aead_context_t *ctx, void *output)
 }
 
 inline size_t ptls_aead_decrypt(ptls_aead_context_t *ctx, void *output, const void *input, size_t inlen, uint64_t seq,
-                                const void *aad, size_t aadlen)
+                                const void *aad, size_t aadlen, int batch)
 {
     uint8_t iv[PTLS_MAX_IV_SIZE];
 
     ptls_aead__build_iv(ctx, iv, seq);
-    return ctx->do_decrypt(ctx, output, input, inlen, seq, iv, aad, aadlen);
+    return ctx->do_decrypt(ctx, output, input, inlen, seq, iv, aad, aadlen, batch);
 }
 
 #define ptls_define_hash(name, ctx_type, init_func, update_func, final_func)                                                       \
