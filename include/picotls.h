@@ -248,9 +248,12 @@ typedef struct st_ptls_cipher_context_t {
     void (*do_dispose)(struct st_ptls_cipher_context_t *ctx);
     void (*do_init)(struct st_ptls_cipher_context_t *ctx, const void *iv);
     void (*do_transform)(struct st_ptls_cipher_context_t *ctx, void *output, const void *input, size_t len);
-
-    void (*do_encrypt)(struct st_ptls_cipher_context_t *ctx, const void *iv, void *output, const void *input, size_t len, uint8_t *first_byte_at, uint8_t *dst_payload_from);
-    void (*do_decrypt)(struct st_ptls_cipher_context_t *ctx, const void *iv, void *output, const void *input, size_t len, uint8_t *first_byte_at, uint8_t *dst_payload_from);
+    // void (*do_encrypt)(struct st_ptls_cipher_context_t *ctx, const void *iv, void *output, const void *input, size_t len,
+    //                   uint8_t *first_byte_at, uint8_t *dst_payload_from);
+    void (*do_encrypt_push)(struct st_ptls_cipher_context_t *ctx, const void *iv, void *output, const void *input, size_t len,
+                            uint8_t *first_byte_at, uint8_t *dst_payload_from);
+    // void (*do_decrypt)(struct st_ptls_cipher_context_t *ctx, const void *iv, void *output, const void *input, size_t len,
+    //                   uint8_t *first_byte_at, uint8_t *dst_payload_from);
 } ptls_cipher_context_t;
 
 /**
@@ -277,10 +280,17 @@ typedef struct st_ptls_aead_context_t {
     void (*do_encrypt_init)(struct st_ptls_aead_context_t *ctx, const void *iv, const void *aad, size_t aadlen);
     size_t (*do_encrypt_update)(struct st_ptls_aead_context_t *ctx, void *output, const void *input, size_t inlen);
     size_t (*do_encrypt_final)(struct st_ptls_aead_context_t *ctx, void *output);
+
     size_t (*do_decrypt)(struct st_ptls_aead_context_t *ctx, void *output, const void *input, size_t inlen, uint64_t seq,
-                         const void *iv, const void *aad, size_t aadlen, int batch);
+                         const void *iv, const void *aad, size_t aadlen);
+
+    size_t (*do_decrypt_push)(struct st_ptls_aead_context_t *ctx, void *output, const void *input, size_t inlen, uint64_t seq,
+                              const void *iv, const void *aad, size_t aadlen);
+
     size_t (*do_encrypt)(struct st_ptls_aead_context_t *ctx, void *output, const void *input, size_t inlen, uint64_t seq,
                          const void *iv, const void *aad, size_t aadlen);
+    size_t (*do_encrypt_push)(struct st_ptls_aead_context_t *ctx, void *output, const void *input, size_t inlen, uint64_t seq,
+                              const void *iv, const void *aad, size_t aadlen);
 } ptls_aead_context_t;
 
 /**
@@ -351,7 +361,7 @@ typedef struct st_ptls_hash_context_t {
     /**
      * returns the digest and performs necessary operation specified by mode
      */
-    void (* final)(struct st_ptls_hash_context_t *ctx, void *md, ptls_hash_final_mode_t mode);
+    void (*final)(struct st_ptls_hash_context_t *ctx, void *md, ptls_hash_final_mode_t mode);
     /**
      * creates a copy of the hash context
      */
@@ -490,7 +500,8 @@ PTLS_CALLBACK_TYPE(int, save_ticket, ptls_t *tls, ptls_iovec_t input);
  * event logging (incl. secret logging)
  */
 typedef struct st_ptls_log_event_t {
-    void (*cb)(struct st_ptls_log_event_t *self, ptls_t *tls, const char *type, const char *fmt, ...) __attribute__((format(printf, 4, 5)));
+    void (*cb)(struct st_ptls_log_event_t *self, ptls_t *tls, const char *type, const char *fmt, ...)
+        __attribute__((format(printf, 4, 5)));
 } ptls_log_event_t;
 /**
  * reference counting
@@ -1048,9 +1059,10 @@ static void ptls_cipher_init(ptls_cipher_context_t *ctx, const void *iv);
  */
 static void ptls_cipher_encrypt(ptls_cipher_context_t *ctx, void *output, const void *input, size_t len);
 
-
-void ptls_cipher_init_and_decrypt(ptls_cipher_context_t *ctx, const void *iv, void *output, const void *input, size_t len, uint8_t *first_byte_at, uint8_t *dst_payload_from);
-void ptls_cipher_init_and_encrypt(ptls_cipher_context_t *ctx, const void *iv, void *output, const void *input, size_t len, uint8_t *first_byte_at, uint8_t *dst_payload_from);
+void ptls_cipher_init_and_decrypt(ptls_cipher_context_t *ctx, const void *iv, void *output, const void *input, size_t len,
+                                  uint8_t *first_byte_at, uint8_t *dst_payload_from);
+void ptls_cipher_init_and_encrypt(ptls_cipher_context_t *ctx, const void *iv, void *output, const void *input, size_t len,
+                                  uint8_t *first_byte_at, uint8_t *dst_payload_from);
 
 /**
  * instantiates an AEAD cipher given a secret, which is expanded using hkdf to a set of key and iv
@@ -1069,6 +1081,8 @@ void ptls_aead_free(ptls_aead_context_t *ctx);
 /**
  *
  */
+size_t ptls_aead_encrypt_push(ptls_aead_context_t *ctx, void *output, const void *input, size_t inlen, uint64_t seq,
+                              const void *aad, size_t aadlen);
 size_t ptls_aead_encrypt(ptls_aead_context_t *ctx, void *output, const void *input, size_t inlen, uint64_t seq, const void *aad,
                          size_t aadlen);
 /**
@@ -1090,7 +1104,7 @@ static size_t ptls_aead_encrypt_final(ptls_aead_context_t *ctx, void *output);
  * @return number of bytes emitted to output if successful, or SIZE_MAX if the input is invalid (e.g. broken MAC)
  */
 static size_t ptls_aead_decrypt(ptls_aead_context_t *ctx, void *output, const void *input, size_t inlen, uint64_t seq,
-                                const void *aad, size_t aadlen, int batch);
+                                const void *aad, size_t aadlen);
 /**
  * Return the current read epoch.
  */
@@ -1218,12 +1232,12 @@ inline size_t ptls_aead_encrypt_final(ptls_aead_context_t *ctx, void *output)
 }
 
 inline size_t ptls_aead_decrypt(ptls_aead_context_t *ctx, void *output, const void *input, size_t inlen, uint64_t seq,
-                                const void *aad, size_t aadlen, int batch)
+                                const void *aad, size_t aadlen)
 {
     uint8_t iv[PTLS_MAX_IV_SIZE];
 
     ptls_aead__build_iv(ctx, iv, seq);
-    return ctx->do_decrypt(ctx, output, input, inlen, seq, iv, aad, aadlen, batch);
+    return ctx->do_decrypt(ctx, output, input, inlen, seq, iv, aad, aadlen);
 }
 
 #define ptls_define_hash(name, ctx_type, init_func, update_func, final_func)                                                       \
