@@ -1105,6 +1105,8 @@ static size_t ptls_aead_encrypt_final(ptls_aead_context_t *ctx, void *output);
  */
 static size_t ptls_aead_decrypt(ptls_aead_context_t *ctx, void *output, const void *input, size_t inlen, uint64_t seq,
                                 const void *aad, size_t aadlen);
+static size_t ptls_aead_decrypt_push(ptls_aead_context_t *ctx, void *output, const void *input, size_t inlen, uint64_t seq,
+                                     const void *aad, size_t aadlen);
 /**
  * Return the current read epoch.
  */
@@ -1238,6 +1240,15 @@ inline size_t ptls_aead_decrypt(ptls_aead_context_t *ctx, void *output, const vo
 
     ptls_aead__build_iv(ctx, iv, seq);
     return ctx->do_decrypt(ctx, output, input, inlen, seq, iv, aad, aadlen);
+}
+
+inline size_t ptls_aead_decrypt_push(ptls_aead_context_t *ctx, void *output, const void *input, size_t inlen, uint64_t seq,
+                                const void *aad, size_t aadlen)
+{
+    uint8_t iv[PTLS_MAX_IV_SIZE];
+
+    ptls_aead__build_iv(ctx, iv, seq);
+    return ctx->do_decrypt_push(ctx, output, input, inlen, seq, iv, aad, aadlen);
 }
 
 #define ptls_define_hash(name, ctx_type, init_func, update_func, final_func)                                                       \
