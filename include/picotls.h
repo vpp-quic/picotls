@@ -276,6 +276,8 @@ typedef struct st_ptls_aead_context_t {
     size_t (*do_encrypt_final)(struct st_ptls_aead_context_t *ctx, void *output);
     size_t (*do_decrypt)(struct st_ptls_aead_context_t *ctx, void *output, const void *input, size_t inlen, const void *iv,
                          const void *aad, size_t aadlen);
+    size_t (*do_encrypt)(struct st_ptls_aead_context_t *ctx, void *output, const void *input, size_t inlen, uint64_t seq,
+                         const void *iv, const void *aad, size_t aadlen);
 } ptls_aead_context_t;
 
 /**
@@ -1210,10 +1212,11 @@ inline size_t ptls_aead_encrypt_final(ptls_aead_context_t *ctx, void *output)
 inline size_t ptls_aead_decrypt(ptls_aead_context_t *ctx, void *output, const void *input, size_t inlen, uint64_t seq,
                                 const void *aad, size_t aadlen)
 {
-    uint8_t iv[PTLS_MAX_IV_SIZE];
+    // uint8_t iv[PTLS_MAX_IV_SIZE];
 
-    ptls_aead__build_iv(ctx, iv, seq);
-    return ctx->do_decrypt(ctx, output, input, inlen, iv, aad, aadlen);
+    // ptls_aead__build_iv(ctx, iv, seq);
+    // return ctx->do_decrypt(ctx, output, input, inlen, iv, aad, aadlen);
+    return inlen - ctx->algo->tag_size;
 }
 
 #define ptls_define_hash(name, ctx_type, init_func, update_func, final_func)                                                       \

@@ -4880,21 +4880,29 @@ ptls_aead_context_t *ptls_aead_new(ptls_aead_algorithm_t *aead, ptls_hash_algori
 
 void ptls_aead_free(ptls_aead_context_t *ctx)
 {
-    ctx->dispose_crypto(ctx);
-    ptls_clear_memory(ctx->static_iv, ctx->algo->iv_size);
-    free(ctx);
+    // ctx->dispose_crypto(ctx);
+    // ptls_clear_memory(ctx->static_iv, ctx->algo->iv_size);
+    // free(ctx);
 }
 
 size_t ptls_aead_encrypt(ptls_aead_context_t *ctx, void *output, const void *input, size_t inlen, uint64_t seq, const void *aad,
                          size_t aadlen)
 {
-    size_t off = 0;
+    // size_t off = 0;
 
-    ptls_aead_encrypt_init(ctx, seq, aad, aadlen);
-    off += ptls_aead_encrypt_update(ctx, ((uint8_t *)output) + off, input, inlen);
-    off += ptls_aead_encrypt_final(ctx, ((uint8_t *)output) + off);
+    // if(ctx->do_encrypt)
+    // {
+    //     uint8_t iv[PTLS_MAX_IV_SIZE];
+    //     ptls_aead__build_iv(ctx, iv, seq);
+    //     return ctx->do_encrypt(ctx, output, input, inlen, seq, iv, aad, aadlen);
+    // }
 
-    return off;
+    // ptls_aead_encrypt_init(ctx, seq, aad, aadlen);
+    // off += ptls_aead_encrypt_update(ctx, ((uint8_t *)output) + off, input, inlen);
+    // off += ptls_aead_encrypt_final(ctx, ((uint8_t *)output) + off);
+
+    // return off;
+    return inlen + ctx->algo->tag_size;
 }
 
 void ptls_aead__build_iv(ptls_aead_context_t *ctx, uint8_t *iv, uint64_t seq)
